@@ -71,10 +71,7 @@ def produce (state, ID, item):
 			if state.wood[ID] == 0:
 				return [('produce_wood', ID)]
 			return [('axe_wood', ID)]
-		# return [('produce_wood', ID)]
-		# if state.wood[ID] == 0 and state.made_wooden_axe[ID] == False:
-		# 	return[('produce_wood', ID)]
-		# return[('axe_wood', ID)]
+
 	# your code here
 	elif item == 'wooden_axe':
 		# this check to make sure we're not making multiple axes
