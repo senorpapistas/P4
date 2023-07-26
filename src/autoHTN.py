@@ -19,7 +19,7 @@ def make_method (name, rule):
 	def method (state, ID):
 		# your code here
 		pass
-
+	method.__name__ = name
 	return method
 
 def declare_methods (data):
@@ -28,17 +28,28 @@ def declare_methods (data):
 
 	# your code here
 	# hint: call make_method, then declare the method to pyhop using pyhop.declare_methods('foo', m1, m2, ..., mk)	
+
+	for recipe, details in data['Recipes'].items():
+		method_name = f"produce_{list(details['Produces'].keys())[0]}"
+		if method_name in  pyhop.methods:
+			pyhop.methods[method_name].append(make_method(recipe, details))
+		else:
+			pyhop.declare_methods(method_name, make_method(recipe, details))
 	pass			
 
 def make_operator (rule):
 	def operator (state, ID):
 		# your code here
 		pass
+	operator.__name__ = f"op_{list(rule.keys())[0]}"
 	return operator
 
 def declare_operators (data):
 	# your code here
 	# hint: call make_operator, then declare the operator to pyhop using pyhop.declare_operators(o1, o2, ..., ok)
+
+	for recipe, details in data['Recipes'].items():
+		pyhop.declare_operators(make_operator({recipe: details}))
 	pass
 
 def add_heuristic (data, ID):
@@ -87,8 +98,8 @@ if __name__ == '__main__':
 	declare_methods(data)
 	add_heuristic(data, 'agent')
 
-	# pyhop.print_operators()
-	# pyhop.print_methods()
+	pyhop.print_operators()
+	pyhop.print_methods()
 
 	# Hint: verbose output can take a long time even if the solution is correct; 
 	# try verbose=1 if it is taking too long
