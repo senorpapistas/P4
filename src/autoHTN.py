@@ -23,10 +23,12 @@ def make_method (name, rule):
 			next_tasks.append(('have_enough', ID, item, value))
 		for item, value in rule.get('Consumes', {}).items():
 			next_tasks.append(('have_enough', ID, item, value))
-		next_tasks.append((f"op_{name}", ID))
+		for item, value in reversed(rule.get('Consumes', {}).items()):
+			next_tasks.append(('have_enough', ID, item, value))
+		next_tasks.append((f"op_{name}".replace(' ', '_'), ID))
 		return next_tasks
 	
-	method.__name__ = name
+	method.__name__ = name.replace(' ', '_')
 	return method
 
 def declare_methods (data):
@@ -46,26 +48,24 @@ def declare_methods (data):
 def make_operator (rule):
 	def operator (state, ID):
 		# your code here
-		# print('before', vars(state))
 
-		for item, value in rule.get('Requires', {}).items():
-			if list(getattr(state, item).values())[0] < value:
+		for item, value in list(rule.values())[0].get('Requires', {}).items():
+			if getattr(state,item)[ID] < value:
 				return False
 			
-		for item, value in rule.get('Consumes', {}).items():
-			if list(getattr(state, item).values())[0] < value:
+		for item, value in list(rule.values())[0].get('Consumes', {}).items():
+			if getattr(state,item)[ID] < value:
 				return False
-			setattr(state, item, list(getattr(state, item).values())[0] - value)
+			setattr(state, item, {ID: getattr(state,item)[ID] - value})
 
-		for item, value in rule.get('Produces', {}).items():
-			setattr(state, item, list(getattr(state, item).values())[0] + value)
+		for item, value in list(rule.values())[0].get('Produces', {}).items():
+			setattr(state, item, {ID: getattr(state,item)[ID] + value})
 
-		state.time[ID] -= rule.get('Time', 1)
+		state.time[ID] -= list(rule.values())[0].get('Time', 1)
 
-		# print('after', vars(state))
 		return state
 	
-	operator.__name__ = f"op_{list(rule.keys())[0]}"
+	operator.__name__ = f"op_{list(rule.keys())[0]}".replace(' ', '_')
 	return operator
 
 def declare_operators (data):
@@ -81,6 +81,18 @@ def add_heuristic (data, ID):
 	# e.g. def heuristic2(...); pyhop.add_check(heuristic2)
 	def heuristic (state, curr_task, tasks, plan, depth, calling_stack):
 		# your code here
+
+		if state.time[ID] < 0:
+			return True
+
+		if curr_task[0] == 'have_enough':
+			if curr_task[2] in data['Tools'] and curr_task in tasks[1:-1]:
+				return True
+
+		if curr_task[0].startswith('produce'):
+			if getattr(state, tasks[1][2])[ID] >= tasks[1][3]:
+				return True
+		
 		return False # if True, prune this branch
 
 	pyhop.add_check(heuristic)
@@ -114,17 +126,17 @@ if __name__ == '__main__':
 	with open(rules_filename) as f:
 		data = json.load(f)
 
-	state = set_up_state(data, 'agent', time=239) # allot time here
+	state = set_up_state(data, 'agent', time=289) # allot time here
 	goals = set_up_goals(data, 'agent')
 
 	declare_operators(data)
 	declare_methods(data)
 	add_heuristic(data, 'agent')
 
-	pyhop.print_operators()
-	pyhop.print_methods()
+	# pyhop.print_operators()
+	# pyhop.print_methods()
 
 	# Hint: verbose output can take a long time even if the solution is correct; 
 	# try verbose=1 if it is taking too long
-	pyhop.pyhop(state, goals, verbose=3)
-	# pyhop.pyhop(state, [('have_enough', 'agent', 'cart', 1),('have_enough', 'agent', 'rail', 20)], verbose=3)
+	pyhop.pyhop(state, goals, verbose=1)
+	# pyhop.pyhop(state, [('have_enough', 'agent', 'cart', 1),('have_enough', 'agent', 'rail', 20)], verbose=1)
