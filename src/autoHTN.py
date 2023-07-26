@@ -18,7 +18,14 @@ pyhop.declare_methods ('produce', produce)
 def make_method (name, rule):
 	def method (state, ID):
 		# your code here
-		pass
+		next_tasks = []
+		for item, value in rule.get('Requires', {}).items():
+			next_tasks.append(('have_enough', ID, item, value))
+		for item, value in rule.get('Consumes', {}).items():
+			next_tasks.append(('have_enough', ID, item, value))
+		next_tasks.append((f"op_{name}", ID))
+		return next_tasks
+	
 	method.__name__ = name
 	return method
 
@@ -35,12 +42,29 @@ def declare_methods (data):
 			pyhop.methods[method_name].append(make_method(recipe, details))
 		else:
 			pyhop.declare_methods(method_name, make_method(recipe, details))
-	pass			
 
 def make_operator (rule):
 	def operator (state, ID):
 		# your code here
-		pass
+		# print('before', vars(state))
+
+		for item, value in rule.get('Requires', {}).items():
+			if list(getattr(state, item).values())[0] < value:
+				return False
+			
+		for item, value in rule.get('Consumes', {}).items():
+			if list(getattr(state, item).values())[0] < value:
+				return False
+			setattr(state, item, list(getattr(state, item).values())[0] - value)
+
+		for item, value in rule.get('Produces', {}).items():
+			setattr(state, item, list(getattr(state, item).values())[0] + value)
+
+		state.time[ID] -= rule.get('Time', 1)
+
+		# print('after', vars(state))
+		return state
+	
 	operator.__name__ = f"op_{list(rule.keys())[0]}"
 	return operator
 
@@ -50,7 +74,6 @@ def declare_operators (data):
 
 	for recipe, details in data['Recipes'].items():
 		pyhop.declare_operators(make_operator({recipe: details}))
-	pass
 
 def add_heuristic (data, ID):
 	# prune search branch if heuristic() returns True
